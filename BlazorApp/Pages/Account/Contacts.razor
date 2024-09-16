@@ -1,0 +1,167 @@
+﻿@page "/contacts"
+@inject HttpClient Http
+@inject NavigationManager Navigation
+<body class="adaptive" data-multi-lang="false">
+    <div class="page_layout page_layout-clear">
+        <main>
+            <div class="layout">
+                <div class="layout__content">
+                    <div class="content-wrapper section--content_wrapper">
+                        <div class="sidebar--menu">
+                            <input class="menu-switcher" id="menu-toggle" type="checkbox" />
+                            <label class="menu-toggle" data-title="Личный кабинет" for="menu-toggle"></label>
+                            <div class="menu menu--personal content-block--padded">
+                                <div class="menu-item menu-item--personal">
+                                    <a class="menu-link menu-link--personal link" href="/reservations">
+                                        История резерваций
+                                    </a>
+                                </div>
+                                <div class="menu-item menu-item--personal">
+                                    <a class="menu-link menu-link--personal link" href="/address">
+                                        Адрес доставки
+                                    </a>
+                                </div>
+                                <div class="menu-item menu-item--personal">
+                                    <a class="menu-link menu-link--personal link menu-link--active" href="/account/contacts">
+                                        Контактные данные
+                                    </a>
+                                </div>
+                                <div class="menu-item menu-item--personal">
+                                    <a class="menu-link menu-link--personal link" href="/account/logout">
+                                        Выход
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="section--content">
+                            <div class="section--checkout_header content-block--padded">
+                                <h1 class="section-title title title--h1">
+                                    Контактные данные
+                                </h1>
+                            </div>
+
+                            <div class="content-block--padded">
+                                @if (!string.IsNullOrEmpty(errorMessage))
+                                {
+                                    <div class="alert alert-danger">
+                                        @errorMessage
+                                    </div>
+                                }
+
+                                <EditForm Model="@userData" OnValidSubmit="HandleValidSubmit">
+                                    <DataAnnotationsValidator />
+                                    <ValidationSummary />
+
+                                    <div class="contact-form">
+                                        <div class="form-group">
+                                            <label for="contact-name">Имя:</label>
+                                            <InputText id="contact-name" class="form-control" @bind-Value="userData.Username" required />
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="contact-email">Email:</label>
+                                            <InputText id="contact-email" class="form-control" @bind-Value="userData.Email" type="email" required />
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="contact-phone">Телефон:</label>
+                                            <InputText id="contact-phone" class="form-control" @bind-Value="userData.PhoneNumber" type="tel" required />
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="contact-address">Адрес:</label>
+                                            <InputText id="contact-address" class="form-control" @bind-Value="userData.Address" required />
+                                        </div>
+
+                                        <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                                    </div>
+                                </EditForm>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    @code {
+        private UserDataDto userData = new UserDataDto();
+        private string errorMessage;
+
+        protected override async Task OnInitializedAsync()
+        {
+            await GetContactsData();
+        }
+
+        private async Task GetContactsData()
+        {
+            try
+            {
+                var response = await Http.GetAsync("api/account/contacts");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    userData = await response.Content.ReadFromJsonAsync<UserDataDto>();
+                    if (userData == null)
+                    {
+                        errorMessage = "Данные не найдены.";
+                    }
+                }
+                else
+                {
+                    errorMessage = $"Ошибка: {response.StatusCode}";
+                }
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Произошла ошибка: {ex.Message}";
+            }
+        }
+
+        private async Task HandleValidSubmit()
+        {
+            var response = await Http.PostAsJsonAsync("api/account/updateContacts", userData);
+
+            if (response.IsSuccessStatusCode)
+            {
+
+                Console.WriteLine("Контактные данные успешно обновлены!");
+
+            }
+            else
+            {
+                errorMessage = $"Ошибка: {response.StatusCode}";
+            }
+        }
+        private async Task Logout()
+        {
+            try
+            {
+                var response = await Http.PostAsync("api/account/logout", null); // Отправляем POST запрос на ваш контроллер
+
+                if (response.IsSuccessStatusCode)
+                {
+                    // Перенаправление пользователя на страницу входа
+                    Navigation.NavigateTo("/login", true);
+                }
+                else
+                {
+                    // Обрабатываем ошибку, если выход не удался
+                    Console.WriteLine("Logout failed: " + response.ReasonPhrase);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error during logout: {ex.Message}");
+            }
+        }
+        public class ApiResponse
+        {
+            public bool Success { get; set; }
+            public string Message { get; set; }
+        }
+    }
+
+    <link href="css/styles.css" rel="stylesheet" />
+</body>

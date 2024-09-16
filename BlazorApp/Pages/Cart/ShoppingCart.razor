@@ -1,0 +1,161 @@
+﻿@page "/shopping-cart"
+@inject HttpClient Http
+@inject IJSRuntime JS
+@using BlazorApp.Models
+@using BlazorApp.Shared
+@inject NavigationManager NavigationManager
+
+<h1>Shopping Cart</h1>
+<link href="css/site.css" rel="stylesheet" />
+
+@if (cart.CartItems != null && cart.CartItems.Any())
+{
+    <table class="cart-table">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th>Price</th>
+                <th>Quantity</th>
+                <th>Total</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in cart.CartItems)
+            {
+                <tr>
+                    <td>@item.Name</td>
+                    <td>@item.Price.ToString("C")</td>
+                    <td>
+                        <input type="number" @bind="item.Quantity" min="1" />
+                        <button @onclick="() => UpdateQuantity(item)">Update</button>
+                    </td>
+                    <td>@item.TotalPrice.ToString("C")</td>
+                    <td>
+                        <button @onclick="() => RemoveFromCart(item)">Remove</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <h3>Total: @total.ToString("C")</h3>
+    <a href="/payment" class="btn btn-success">Pay Now</a>
+}
+else
+{
+    <p>Your cart is empty.</p>
+}
+
+@code {
+    private CartDto cart = new CartDto();
+    private decimal total;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCart();
+    }
+
+    private async Task LoadCart()
+    {
+        try
+        {
+            var response = await Http.GetAsync("api/cart");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var cartData = await response.Content.ReadFromJsonAsync<CartDto>();
+
+                if (cartData != null)
+                {
+                    cart = cartData;
+                    total = cartData.Total;
+                }
+                else
+                {
+                    await JS.InvokeVoidAsync("alert", "Failed to load cart data.");
+                }
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("alert", $"Server responded with an error: {response.StatusCode}");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"An error occurred: {ex.Message}");
+        }
+    }
+
+    private async Task UpdateQuantity(CartItemDto item)
+    {
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/cart/update-quantity", item);
+            if (response.IsSuccessStatusCode)
+            {
+                await JS.InvokeVoidAsync("alert", "Quantity updated successfully!");
+                await LoadCart();
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("alert", "Failed to update quantity.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"An error occurred: {ex.Message}");
+        }
+    }
+
+    private async Task RemoveFromCart(CartItemDto item)
+    {
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/cart/remove", item.DishId);
+            if (response.IsSuccessStatusCode)
+            {
+                await JS.InvokeVoidAsync("alert", "Item removed from cart.");
+                await LoadCart();
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("alert", "Failed to remove item from cart.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"An error occurred: {ex.Message}");
+        }
+    }
+}
+
+<style>
+    .cart-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+    }
+
+        .cart-table th, .cart-table td {
+            padding: 10px;
+            border: 1px solid #ddd;
+            text-align: left;
+        }
+
+        .cart-table th {
+            background-color: #f4f4f4;
+        }
+
+    .btn-success {
+        background-color: #28a745;
+        color: #fff;
+        padding: 10px 15px;
+        text-decoration: none;
+        border-radius: 4px;
+        transition: background-color 0.3s;
+    }
+
+        .btn-success:hover {
+            background-color: #218838;
+        }
+</style>

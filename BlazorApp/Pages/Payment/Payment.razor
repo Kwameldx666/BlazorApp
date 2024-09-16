@@ -1,0 +1,112 @@
+﻿@page "/payment"
+@inject HttpClient Http
+@inject IJSRuntime JS
+@using BlazorApp.Models
+@using BlazorApp.Shared
+@inject NavigationManager NavigationManager
+<h1>Payment Information</h1>
+
+<div class="container">
+    <EditForm Model="paymentDetails" OnValidSubmit="HandleSubmit">
+        <DataAnnotationsValidator />
+        <ValidationSummary />
+
+        <div class="form-group">
+            <label for="CardNumber">Card Number</label>
+            <InputText id="CardNumber" @bind-Value="paymentDetails.CardNumber" placeholder="1234 5678 9012 3456" class="form-control" />
+            <ValidationMessage For="@(() => paymentDetails.CardNumber)" />
+        </div>
+
+        <div class="form-group">
+            <label for="CardHolderName">Card Holder Name</label>
+            <InputText id="CardHolderName" @bind-Value="paymentDetails.CardHolderName" placeholder="John Doe" class="form-control" />
+            <ValidationMessage For="@(() => paymentDetails.CardHolderName)" />
+        </div>
+
+        <div class="form-group">
+            <label for="ExpiryDate">Expiry Date</label>
+            <InputText id="ExpiryDate" @bind-Value="paymentDetails.ExpiryDate" placeholder="MM/YY" class="form-control" />
+            <ValidationMessage For="@(() => paymentDetails.ExpiryDate)" />
+        </div>
+
+        <div class="form-group">
+            <label for="CVV">CVV</label>
+            <InputText id="CVV" @bind-Value="paymentDetails.CVV" placeholder="123" class="form-control" />
+            <ValidationMessage For="@(() => paymentDetails.CVV)" />
+        </div>
+
+        <h1>Sum of pay: @paymentDetails.TotalPrice.ToString("C")</h1>
+
+        <input type="hidden" name="Currency" value="@selectedCurrency" />
+
+        <div class="form-group">
+            <button type="submit" class="btn btn-success">Pay Now</button>
+        </div>
+    </EditForm>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="error-message">
+            @errorMessage
+        </div>
+    }
+</div>
+<link href="assets/css/custom.css" rel="stylesheet" />
+@code {
+    private PaymentDetails paymentDetails = new PaymentDetails();
+    private string selectedCurrency = "USD"; // Валюта по умолчанию
+    private string errorMessage;
+    private async Task GetTotalPrice()
+    {
+        try
+        {
+            // Выполняем GET-запрос для получения суммы платежа
+            var response = await Http.GetAsync("api/payment/totalPrice");
+
+            // Проверяем, успешен ли запрос
+            if (response.IsSuccessStatusCode)
+            {
+                // Читаем сумму из содержимого ответа в формате decimal
+                var amount = await response.Content.ReadFromJsonAsync<decimal>();
+
+                // Присваиваем значение суммы
+                paymentDetails.TotalPrice = amount;
+            }
+            else
+            {
+                errorMessage = "Failed to retrieve payment amount.";
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"An error occurred: {ex.Message}");
+        }
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await GetTotalPrice();
+    }
+
+    private async Task HandleSubmit()
+    {
+        try
+        {
+            // Отправляем запрос на API для обработки платежа
+            var response = await Http.PostAsJsonAsync("api/payment/submit", paymentDetails);
+            if (response.IsSuccessStatusCode)
+            {
+                await JS.InvokeVoidAsync("alert", "Payment successful!");
+                NavigationManager.NavigateTo("/payment-confirm");
+            }
+            else
+            {
+                errorMessage = "Payment failed. Please try again.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"An error occurred: {ex.Message}";
+        }
+    }
+}

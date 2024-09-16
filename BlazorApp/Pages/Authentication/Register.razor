@@ -1,0 +1,89 @@
+﻿@page "/register"
+@inject HttpClient Http
+@inject NavigationManager NavigationManager
+@layout NoLayout
+
+<div class="main">
+    <!-- Sign up form -->
+    <section class="signup">
+        <div class="container">
+            <div class="signup-content">
+                <div class="signup-form">
+                    <h2 class="form-title">Sign up</h2>
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger">
+                            @errorMessage
+                        </div>
+                    }
+                    <EditForm Model="registrationModel" OnValidSubmit="HandleRegister" FormName="registrationForm">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+                        <div class="form-group">
+                            <label for="name"><i class="zmdi zmdi-account material-icons-name"></i></label>
+                            <InputText id="name" class="form-control" @bind-Value="registrationModel.Username" placeholder="Your Name" />
+                            <ValidationMessage For="@(() => registrationModel.Username)" />
+                        </div>
+                        <div class="form-group">
+                            <label for="email"><i class="zmdi zmdi-email"></i></label>
+                            <InputText id="email" type="email" class="form-control" @bind-Value="registrationModel.Email" placeholder="Your Email" />
+                            <ValidationMessage For="@(() => registrationModel.Email)" />
+                        </div>
+                        <div class="form-group">
+                            <label for="pass"><i class="zmdi zmdi-lock"></i></label>
+                            <InputText id="pass" type="password" class="form-control" @bind-Value="registrationModel.Password" placeholder="Password" />
+                            <ValidationMessage For="@(() => registrationModel.Password)" />
+                        </div>
+                        <div class="form-group">
+                            <label for="re_pass"><i class="zmdi zmdi-lock-outline"></i></label>
+                            <InputText id="re_pass" type="password" class="form-control" @bind-Value="registrationModel.ConfirmPassword" placeholder="Repeat your password" />
+                            <ValidationMessage For="@(() => registrationModel.ConfirmPassword)" />
+                        </div>
+                        <div class="form-group">
+                            <InputCheckbox id="agree-term" @bind-Value="registrationModel.AgreedToTerms" />
+                            <label for="agree-term" class="label-agree-term">
+                                <span><span></span></span>I agree all statements in <a href="#" class="term-service">Terms of service</a>
+                            </label>
+                            <ValidationMessage For="@(() => registrationModel.AgreedToTerms)" />
+                        </div>
+                        <div class="form-group form-button">
+                            <Button type="submit" class="form-submit">Register</Button>
+                        </div>
+                    </EditForm>
+                </div>
+                <div class="signup-image">
+                    <figure><img src="Images/signup-image.jpg" alt="sign up image" /></figure>
+                    <a href="/login" class="signup-image-link">I am already a member</a>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<link rel="stylesheet" href="fonts/material-icon/css/material-design-iconic-font.min.css">
+<link href="css1/style.css" rel="stylesheet" />
+
+@code {
+    private RegisterData registrationModel = new RegisterData();
+    private string? errorMessage;
+
+    private async Task HandleRegister()
+    {
+     
+        // Make an HTTP POST request to register the user
+        var result = await Http.PostAsJsonAsync("Authentication/Register", registrationModel);
+
+        if (result.IsSuccessStatusCode)
+        {
+            // Navigate to the login page upon successful registration
+            NavigationManager.NavigateTo("/login");
+        }
+        else
+        {
+            // Parse and handle registration errors
+         
+            var errorResponse = await result.Content.ReadFromJsonAsync<ErrorResponse>();
+            errorMessage = errorResponse?.Message ?? "Registration failed. Please try again.";
+        }
+    }
+}

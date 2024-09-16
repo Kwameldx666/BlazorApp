@@ -1,0 +1,226 @@
+﻿@page "/users"
+@inject HttpClient Http
+@using BlazorApp.ViewModels
+@using System.Net.Http.Json
+@inject IJSRuntime JS
+@inject NavigationManager Navigation
+@using System.Text.Json;
+
+@code {
+    private UserIndexViewModel viewModel = new UserIndexViewModel();
+    private bool isLoading = true;
+    [Parameter] public Guid UserId { get; set; }
+    string Role { get; set; }
+    bool IsAdminOrModerator { get; set; } = false;
+    string errorMessage;
+    protected override async Task OnInitializedAsync()
+    {
+        
+            try
+            {
+                // Perform GET request to get user role
+                var response = await Http.GetAsync("api/Users/role");
+
+                // Check for successful response
+                response.EnsureSuccessStatusCode();
+
+                // Read the response content as a string
+                string responseContent = await response.Content.ReadAsStringAsync();
+
+                // Deserialize JSON response to extract the role
+            var jsonResponse = JsonSerializer.Deserialize<RoleResponse>(responseContent,
+             new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                // Assuming jsonResponse.Role contains the actual role string
+                Role = jsonResponse.Role;
+
+                IsAdminOrModerator = Role == "Admin" || Role == "Moderator";
+
+                if (IsAdminOrModerator)
+                {
+                    await LoadUsers();
+                }
+                else
+                {
+                    Navigation.NavigateTo("/Error404");
+                }
+            }
+            catch (Exception ex)
+            {
+                errorMessage = $"Exception: {ex.Message}";
+                // Optionally show the error message to the user
+            }
+
+    
+     
+    }
+    public class RoleResponse
+    {
+        public string Role { get; set; }
+    }
+
+    private async Task LoadUsers()
+    {
+        try
+        {
+            var response = await Http.GetAsync("/api/Users");
+            if (response.IsSuccessStatusCode)
+            {
+                viewModel = await response.Content.ReadFromJsonAsync<UserIndexViewModel>();
+                if (viewModel.Users == null || !viewModel.Users.Any())
+                {
+                    viewModel.ErrorMessage = "No users available.";
+                }
+            }
+            else
+            {
+                viewModel.ErrorMessage = "Failed to load users.";
+            }
+        }
+        catch (Exception ex)
+        {
+            viewModel.ErrorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task DeleteUser(Guid id)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this user?"))
+        {
+            try
+            {
+                var response = await Http.DeleteAsync($"/api/Users/{id}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    await LoadUsers(); // Refresh the user list
+                    await JS.InvokeVoidAsync("alert", "User deleted successfully!");
+                }
+                else
+                {
+                    await JS.InvokeVoidAsync("alert", "Failed to delete the user. Please try again.");
+                }
+            }
+            catch (Exception ex)
+            {
+                await JS.InvokeVoidAsync("alert", $"An error occurred. Please try again. {ex.Message}");
+            }
+        }
+    }
+
+    private async Task SaveUser()
+    {
+        try
+        {
+            var response = await Http.PostAsJsonAsync("/api/Users/UpdateUser", viewModel.UserToEdit);
+
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadUsers(); // Refresh the user list
+                viewModel.UserToEdit = null; // Clear the edit form
+                await JS.InvokeVoidAsync("alert", "User updated successfully!");
+            }
+            else
+            {
+                await JS.InvokeVoidAsync("alert", "Failed to update the user. Please try again.");
+            }
+        }
+        catch (Exception ex)
+        {
+            await JS.InvokeVoidAsync("alert", $"An error occurred. Please try again. {ex.Message}");
+        }
+    }
+}
+
+<div class="container mt-4">
+    <h2 class="mb-4">Users List</h2>
+
+    @if (isLoading)
+    {
+        <p>Loading users, please wait...</p>
+    }
+    else
+    {
+        @if (!string.IsNullOrEmpty(viewModel.ErrorMessage))
+        {
+            <div class="text-danger">
+                @viewModel.ErrorMessage
+            </div>
+        }
+
+        <div class="table-responsive mb-4">
+            <table class="table table-striped table-bordered">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in viewModel.Users)
+                    {
+                        <tr>
+                            <td>@user.Username</td>
+                            <td>@user.Email</td>
+                            <td>@user.Roles</td>
+                            <td>
+                                <button class="btn btn-warning btn-sm" @onclick="() => viewModel.UserToEdit = user">Edit</button>
+                                <button class="btn btn-danger btn-sm" @onclick="() => DeleteUser(user.Id)">Delete</button>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+
+        @if (viewModel.UserToEdit != null)
+        {
+            <h2>Edit User</h2>
+
+            <EditForm Model="viewModel.UserToEdit" OnValidSubmit="SaveUser">
+                <DataAnnotationsValidator />
+                <ValidationSummary />
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <InputText id="username" class="form-control" @bind-Value="viewModel.UserToEdit.Username" />
+                    <ValidationMessage For="@(() => viewModel.UserToEdit.Username)" />
+                </div>
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <InputText id="email" class="form-control" @bind-Value="viewModel.UserToEdit.Email" />
+                    <ValidationMessage For="@(() => viewModel.UserToEdit.Email)" />
+                </div>
+                <div class="form-group">
+                    <label for="roles">Role</label>
+                    <select id="roles" class="form-control" @bind="viewModel.UserToEdit.Roles">
+                        <option value="Admin">Admin</option>
+                        <option value="Moderator">Moderator</option>
+                        <option value="User">User</option>
+                        <option value="VIP">VIP</option>
+                    </select>
+                    <ValidationMessage For="@(() => viewModel.UserToEdit.Roles)" />
+                </div>
+
+                <button type="submit" class="btn btn-primary">Save</button>
+            </EditForm>
+
+        }
+    }
+</div>
+
+<style>
+    .container {
+        max-width: 1200px;
+    }
+
+    .text-danger {
+        color: #dc3545;
+        font-weight: bold;
+    }
+</style>

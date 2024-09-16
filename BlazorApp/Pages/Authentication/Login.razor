@@ -1,0 +1,84 @@
+﻿@page "/login"
+@inject NavigationManager NavigationManager
+@inject HttpClient Http
+@layout NoLayout
+<div class="main">
+    <!-- Sign in form -->
+    <section class="sign-in">
+        <div class="container">
+            <div class="signin-content">
+                <div class="signin-image">
+                    <figure><img src="Images/signin-image.jpg" alt="signin image" /></figure>
+                    <a href="/register" class="signup-image-link">Create an account</a>
+                </div>
+              
+                <div class="signin-form">
+                    <h2 class="form-title">Sign in</h2>
+                    @if (!string.IsNullOrEmpty(errorMessage))
+                    {
+                        <div class="alert alert-danger">
+                            @errorMessage
+                        </div>
+                    }
+                    <EditForm Model="loginModel" OnValidSubmit="HandleLogin">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+                        <div class="form-group">
+                            <label for="your_name"><i class="zmdi zmdi-account material-icons-name"></i></label>
+                            <InputText id="your_name" class="form-control" @bind-Value="loginModel.Credential" placeholder="Your Name or Email" />
+                        </div>
+                        <div class="form-group">
+                            <label for="your_pass"><i class="zmdi zmdi-lock"></i></label>
+                            <InputText id="your_pass" type="password" class="form-control" @bind-Value="loginModel.Password" placeholder="Password" />
+                        </div>
+                        <div class="form-group">
+                            <InputCheckbox id="remember-me" @bind-Value="loginModel.RememberMe" />
+                            <label for="remember-me" class="label-agree-term"><span><span></span></span>Remember me</label>
+                        </div>
+                        <div class="form-group form-button">
+                            <button type="submit" class="form-submit">Log in</button>
+                        </div>
+                    </EditForm>
+                    <div class="social-login">
+                        <span class="social-label">Or login with</span>
+                        <ul class="socials">
+                            <li><a href="#"><i class="display-flex-center zmdi zmdi-facebook"></i></a></li>
+                            <li><a href="#"><i class="display-flex-center zmdi zmdi-twitter"></i></a></li>
+                            <li><a href="#"><i class="display-flex-center zmdi zmdi-google"></i></a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+<link rel="stylesheet" href="fonts/material-icon/css/material-design-iconic-font.min.css">
+<link href="css1/style.css" rel="stylesheet" />
+<script src="vendor/jquery/jquery.min.js"></script>
+<link rel="stylesheet" href="css1/Auth.css" asp-append-version="true" />
+<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.8.1/css/all.css"
+      integrity="sha384-50oBUHEmvpQ+1lW4y57PTFmhCaXp0ML5d60M1M7uH2+nqUivzIebhndOJK28anvf"
+      crossorigin="anonymous">
+@code {
+    LoginModel loginModel = new LoginModel();
+    string? errorMessage;
+    async Task HandleLogin()
+    {
+
+        var result = await Http.PostAsJsonAsync("Authentication/Login", loginModel);
+        if (result.IsSuccessStatusCode)
+        {
+            // Navigate to the login page upon successful registration
+            NavigationManager.NavigateTo("/");
+        }
+        else
+        {
+            // Parse and handle registration errors
+
+            var errorResponse = await result.Content.ReadFromJsonAsync<ErrorResponse>();
+            errorMessage = errorResponse?.Message ?? "Registration failed. Please try again.";
+        }
+    }
+
+ 
+}

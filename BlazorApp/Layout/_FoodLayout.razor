@@ -1,0 +1,127 @@
+﻿@page "/menu"
+@inject HttpClient Http
+@inject IJSRuntime JS
+<!-- bootstrap core css -->
+<link rel="stylesheet" type="text/css" href="css/bootstrap.css" />
+
+<!--owl slider stylesheet -->
+<link rel="stylesheet" type="text/css" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.carousel.min.css" />
+<!-- nice select  -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jquery-nice-select/1.1.0/css/nice-select.min.css" integrity="sha512-CruCP+TD3yXzlvvijET8wV5WxxEh5H8P4cmz0RFbKK6FlZ2sYl3AEsKlLPHbniXKSrDdFewhbmBK5skbdsASbQ==" crossorigin="anonymous" />
+<!-- font awesome style -->
+<link href="css/font-awesome.min.css" rel="stylesheet" />
+<link href="assets/css/food.css" rel="stylesheet" />
+<!-- Custom styles for this template -->
+<link href="css/style.css" rel="stylesheet" />
+<!-- responsive style -->
+<link href="css/responsive.css" rel="stylesheet" />
+<h3>Our Menu</h3>
+
+
+
+<!-- Filters -->
+<ul class="filters_menu">
+    <li @onclick="() => FilterDishes(null)" class="@GetActiveClass(null)">All</li>
+    <li @onclick='() => FilterDishes("burger")' class="@GetActiveClass("burger")">Burger</li>
+    <li @onclick='() => FilterDishes("pizza")' class="@GetActiveClass("pizza")">Pizza</li>
+    <li @onclick='() => FilterDishes("pasta")' class="@GetActiveClass("pasta")">Pasta</li>
+    <li @onclick='() => FilterDishes("fries")' class="@GetActiveClass("fries")">Fries</li>
+</ul>
+
+
+<!-- Content -->
+<div class="filters-content">
+    @if (!string.IsNullOrEmpty(Message))
+    {
+        <p>@Message</p>
+    }
+    else
+    {
+        <div class="row grid">
+            @foreach (var dish in filteredDishes)
+            {
+                <div class="col-sm-6 col-lg-4 all @dish.Category.ToLower()" data-name="@dish.Name" data-price="@dish.Price">
+                    <div class="box">
+                        <div>
+                            <div class="img-box">
+                                <img src="@dish.ImageUrl" alt="@dish.Name" />
+                            </div>
+                            <div class="detail-box">
+                                <h5 class="name">@dish.Name</h5>
+                                <p>@dish.Description</p>
+                                <div class="options">
+                                    <h6 class="price">$@(dish.Price > 0 ? dish.Price.ToString("0.00") : "N/A")</h6>
+                                    <button class="add-to-cart" @onclick="() => AddToCart(dish)">Add to Cart</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    private List<Dish> dishes = new();
+    private List<Dish> filteredDishes = new();
+    private string selectedCategory;
+    private string Message { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Fetch dishes from server
+            dishes = await Http.GetFromJsonAsync<List<Dish>>("api/dishes");
+            filteredDishes = dishes;
+        }
+        catch (Exception ex)
+        {
+            Message = "An error occurred while loading dishes.";
+        }
+    }
+
+    private void FilterDishes(string category)
+    {
+        selectedCategory = category;
+        if (string.IsNullOrEmpty(category))
+        {
+            filteredDishes = dishes;
+        }
+        else
+        {
+            filteredDishes = dishes.Where(d => d.Category.ToLower() == category.ToLower()).ToList();
+        }
+    }
+
+    private string GetActiveClass(string category)
+    {
+        return selectedCategory == category ? "active" : "";
+    }
+
+    private async Task AddToCart(Dish dish)
+    {
+        var cartItem = new CartItemRequest
+        {
+            DishId = dish.Id,
+            DishName = dish.Name,
+            DishPrice = dish.Price,
+            Quantity = 1
+        };
+
+        // Send POST request to add dish to cart
+        var response = await Http.PostAsJsonAsync("api/cart/add", cartItem);
+
+        if (response.IsSuccessStatusCode)
+        {
+            // Вызов JS alert при успешном добавлении
+            await JS.InvokeVoidAsync("alert", "Dish added to cart successfully!!!");
+        }
+        else
+        {
+            // Вызов JS alert при ошибке
+            await JS.InvokeVoidAsync("alert", "An error occurred while adding the dish to the cart.");
+        }
+    }
+}

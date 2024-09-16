@@ -1,0 +1,178 @@
+﻿@page "/address"
+@inject HttpClient Http
+@using System.Timers
+@inject NavigationManager Navigation
+<body class="adaptive" data-multi-lang="false">
+    <div class="page_layout page_layout-clear">
+        <main>
+            <div class="layout">
+                <div class="layout__content">
+                    <div class="content-wrapper section--content_wrapper">
+                        <div class="sidebar--menu">
+                            <input class="menu-switcher" id="menu-toggle" type="checkbox" />
+                            <label class="menu-toggle" data-title="Личный кабинет" for="menu-toggle"></label>
+                            <div class="menu menu--personal content-block--padded">
+                                <div class="menu-item menu-item--personal">
+                                    <a class="menu-link menu-link--personal link" href="/reservations">
+                                        История резерваций
+                                    </a>
+                                </div>
+                                <div class="menu-item menu-item--personal">
+                                    <a class="menu-link menu-link--personal link menu-link--active" href="/address">
+                                        Адрес доставки
+                                    </a>
+                                </div>
+                                <div class="menu-item menu-item--personal">
+                                    <a class="menu-link menu-link--personal link" href="/contacts">
+                                        Контактные данные
+                                    </a>
+                                </div>
+                                <div class="menu-item menu-item--personal">
+                                    <a class="menu-link menu-link--personal link" href="javascript:void(0)" @onclick="Logout">
+                                        Выход
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="section--content">
+                            <div class="section--checkout_header content-block--padded">
+                                <h1 class="section-title title title--h1">
+                                    Адрес доставки
+                                </h1>
+                            </div>
+
+                            <div class="content-block--padded">
+                                @if (isSaved)
+                                {
+                                    <p class="alert alert-success">Адрес успешно обновлен!</p>
+                                }
+
+                                <EditForm Model="@deliveryAddress" OnValidSubmit="HandleValidSubmit">
+                                    <DataAnnotationsValidator />
+                                    <ValidationSummary />
+
+                                    <div class="address-form">
+                                        <div class="form-group">
+                                            <label for="address-street">Улица:</label>
+                                            <InputText id="address-street" class="form-control" @bind-Value="deliveryAddress.Street" />
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="address-city">Город:</label>
+                                            <InputText id="address-city" class="form-control" @bind-Value="deliveryAddress.City" />
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="address-zip">Почтовый индекс:</label>
+                                            <InputText id="address-zip" class="form-control" @bind-Value="deliveryAddress.ParcelIndex" />
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="address-country">Страна:</label>
+                                            <InputText id="address-country" class="form-control" @bind-Value="deliveryAddress.Country" />
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="address-details">Дополнительные детали:</label>
+                                            <InputTextArea id="address-details" class="form-control" @bind-Value="deliveryAddress.MoreInfo" />
+                                        </div>
+
+                                        <button type="submit" class="btn btn-primary">Сохранить изменения</button>
+                                    </div>
+                                </EditForm>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    @code {
+        private DeliveryAddress deliveryAddress = new DeliveryAddress();
+        private bool isSaved = false;
+        private Timer hideMessageTimer;
+
+        protected override async Task OnInitializedAsync()
+        {
+            await GetAddressData();
+        }
+        private async Task Logout()
+        {
+            try
+            {
+                var response = await Http.PostAsync("api/account/logout", null); // Отправляем POST запрос на ваш контроллер
+
+                if (response.IsSuccessStatusCode)
+                {
+                    // Перенаправление пользователя на страницу входа
+                    Navigation.NavigateTo("/login", true);
+                }
+                else
+                {
+                    // Обрабатываем ошибку, если выход не удался
+                    Console.WriteLine("Logout failed: " + response.ReasonPhrase);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error during logout: {ex.Message}");
+            }
+        }
+        private async Task GetAddressData()
+        {
+            try
+            {
+                var response = await Http.GetAsync("api/account/address");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    deliveryAddress = await response.Content.ReadFromJsonAsync<DeliveryAddress>();
+                    if (deliveryAddress != null)
+                    {
+                        Console.WriteLine("Address data retrieved successfully.");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"Error: {response.StatusCode}");
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Exception occurred: {ex.Message}");
+            }
+        }
+
+        private async Task HandleValidSubmit()
+        {
+            var response = await Http.PostAsJsonAsync("api/account/updateAddress", deliveryAddress);
+            if (response.IsSuccessStatusCode)
+            {
+                isSaved = true;
+
+                // Start timer to hide message after 3 seconds
+                hideMessageTimer = new Timer(3000); // 3 seconds
+                hideMessageTimer.Elapsed += HideMessage;
+                hideMessageTimer.AutoReset = false; // Run only once
+                hideMessageTimer.Start();
+            }
+            else
+            {
+                isSaved = false;
+            }
+        }
+
+        private void HideMessage(object source, ElapsedEventArgs e)
+        {
+            isSaved = false;
+            InvokeAsync(StateHasChanged); // Update UI
+            hideMessageTimer.Dispose(); // Clean up timer resources
+        }
+
+       
+    }
+
+    <link href="css/styles.css" rel="stylesheet" />
+</body>

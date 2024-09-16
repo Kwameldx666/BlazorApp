@@ -1,0 +1,161 @@
+﻿@page "/book-table"
+@using BlazorApp.Models
+@using System.Text.Json
+@inject HttpClient Http
+
+@code {
+    private ReservationDto reservation = new ReservationDto
+        {
+            ReservationDate = DateTime.Today // Установить текущую дату по умолчанию
+        };
+    private string message = "";
+    private bool isSuccess = false;
+
+    private async Task SubmitReservation()
+    {
+        try
+        {
+            Console.WriteLine($"Reservation Date: {reservation.ReservationDate}");
+            Console.WriteLine($"JSON Payload: {JsonSerializer.Serialize(reservation)}");
+            // Send request to create reservation
+            var response = await Http.PostAsJsonAsync("api/reservation/submit", reservation);
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Handle successful reservation
+                message = "Your reservation has been successfully submitted.";
+                isSuccess = true;
+            }
+            else
+            {
+                // Handle errors
+                var errorResponse = await response.Content.ReadFromJsonAsync<ErrorResponse>();
+                message = errorResponse?.Message ?? "Failed to submit your reservation. Please try again.";
+                isSuccess = false;
+            }
+        }
+        catch (Exception ex)
+        {
+            // Handle exceptions, such as network errors
+            message = "An error occurred while submitting your reservation. Please try again later.";
+            isSuccess = false;
+        }
+    }
+
+    public class ErrorResponse
+    {
+        public string Message { get; set; }
+    }
+}
+
+<style>
+    /* Always set the map height explicitly to define the size of the div element that contains the map. */
+    #map {
+        height: 100%;
+    }
+    /* Optional: Makes the sample page fill the window. */
+    html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+    }
+
+    .book_section {
+        padding: 20px 0;
+    }
+
+    .btn_box {
+        margin-top: 20px;
+    }
+
+        .btn_box button {
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+            .btn_box button:hover {
+                background-color: #0056b3;
+            }
+</style>
+
+<div class="book_section layout_padding">
+    <div class="container">
+        <div class="heading_container">
+            <h2>Book A Table</h2>
+        </div>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="form_container">
+                    <EditForm Model="reservation" OnValidSubmit="SubmitReservation">
+                        <DataAnnotationsValidator />
+                        <ValidationSummary />
+
+                        <div class="form-group">
+                            <InputText class="form-control" @bind-Value="reservation.CustomerName" placeholder="Your Name" />
+                            <ValidationMessage For="@(() => reservation.CustomerName)" class="text-danger" />
+                        </div>
+                        <div class="form-group">
+                            <InputText class="form-control" @bind-Value="reservation.PhoneNumber" placeholder="Phone Number" />
+                            <ValidationMessage For="@(() => reservation.PhoneNumber)" class="text-danger" />
+                        </div>
+                        <div class="form-group">
+                            <InputText class="form-control" @bind-Value="reservation.UserEmail" placeholder="Your Email" />
+                            <ValidationMessage For="@(() => reservation.UserEmail)" class="text-danger" />
+                        </div>
+                        <div class="form-group">
+                            <InputSelect class="form-control" @bind-Value="reservation.NumberOfPeople">
+                                <option value="" disabled>Select number of people</option>
+                                @for (int i = 2; i <= 5; i++)
+                                {
+                                    <option value="@i">@i</option>
+                                }
+                            </InputSelect>
+                            <ValidationMessage For="@(() => reservation.NumberOfPeople)" class="text-danger" />
+                        </div>
+                        <div class="form-group">
+                            <InputDate class="form-control" @bind-Value="reservation.ReservationDate" placeholder="Select Date" />
+                            <ValidationMessage For="@(() => reservation.ReservationDate)" class="text-danger" />
+
+                        </div>
+                        <div class="btn_box">
+                            <button type="submit">Book Now</button>
+                        </div>
+                        @if (!string.IsNullOrEmpty(message))
+                        {
+                            <div class="alert @((isSuccess ? "alert-success" : "alert-danger")) mt-3">
+                                @message
+                            </div>
+                        }
+                    </EditForm>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="map_container">
+                    <div id="map"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Google Map API -->
+<script>
+    var map;
+    function initMap() {
+        map = new google.maps.Map(document.getElementById('map'), {
+            center: { lat: 47.0105, lng: 28.8638 },
+            zoom: 12
+        });
+    }
+</script>
+
+  <script src="https://cdn.jsdelivr.net/gh/somanchiu/Keyless-Google-Maps-API@v6.8/mapsJavaScriptAPI.js"
+    async defer></script>
+
+
+
+

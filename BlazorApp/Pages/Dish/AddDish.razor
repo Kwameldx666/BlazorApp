@@ -1,0 +1,203 @@
+﻿@page "/add-dish"
+@inject HttpClient Http
+@using BlazorApp.Models
+@using Microsoft.AspNetCore.Components.Forms
+@inject NavigationManager NavigationManager
+@using System.Text.Json;
+@code {
+    private DishDto dish = new DishDto();
+    private IBrowserFile imageFile;
+    private string errorMessage;
+    private bool isSubmitting = false;
+
+    string Role { get; set; }
+    bool IsAdminOrModerator { get; set; } = false;
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            // Perform GET request to get user role
+            var response = await Http.GetAsync("api/Users/role");
+
+            // Check for successful response
+            response.EnsureSuccessStatusCode();
+
+            // Read the response content as a string
+            string responseContent = await response.Content.ReadAsStringAsync();
+
+            // Deserialize JSON response to extract the role
+            var jsonResponse = JsonSerializer.Deserialize<RoleResponse>(responseContent,
+             new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            // Assuming jsonResponse.Role contains the actual role string
+            Role = jsonResponse.Role;
+
+            IsAdminOrModerator = Role == "Admin" || Role == "Moderator";
+            if (!IsAdminOrModerator)
+            {
+                NavigationManager.NavigateTo("/Error404");
+            }
+
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine( $"Exception: {ex.Message}");
+            // Optionally show the error message to the user
+        }
+
+
+    }
+    public class RoleResponse
+    {
+        public string Role { get; set; }
+    }
+
+    private async Task SubmitDish()
+    {
+        if (!ValidateDish())
+        {
+            errorMessage = "Please fill out all required fields.";
+            return;
+        }
+
+        isSubmitting = true;
+
+        try
+        {
+            var formData = new MultipartFormDataContent();
+            formData.Add(new StringContent(dish.Name), "Name");
+            formData.Add(new StringContent(dish.Description), "Description");
+            formData.Add(new StringContent(dish.Price.ToString()), "Price");
+            formData.Add(new StringContent(dish.Category), "Category");
+
+
+            if (imageFile != null)
+            {
+                var imageContent = new StreamContent(imageFile.OpenReadStream());
+                formData.Add(imageContent, "imageFile", imageFile.Name);
+            }
+
+            var response = await Http.PostAsync("api/Dishes/AddDish", formData);
+
+            if (response.IsSuccessStatusCode)
+            {
+                errorMessage = "Dish added successfully!";
+                await Task.Delay(3000);
+                NavigationManager.NavigateTo("/Dishes");
+            }
+            else
+            {
+                errorMessage = $"Failed to add dish. Status code: {response.StatusCode}";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+
+        isSubmitting = false;
+    }
+
+
+
+    private bool ValidateDish()
+    {
+        return !string.IsNullOrEmpty(dish.Name) && !string.IsNullOrEmpty(dish.Description)
+               && dish.Price > 0 && !string.IsNullOrEmpty(dish.Category);
+    }
+
+    private async Task OnFileSelected(InputFileChangeEventArgs e)
+    {
+        imageFile = e.File;
+    }
+}
+
+<div class="form-container">
+    <h2>Add New Dish</h2>
+
+    @if (!string.IsNullOrEmpty(errorMessage))
+    {
+        <div class="text-danger">@errorMessage</div>
+    }
+
+    <EditForm Model="dish" OnValidSubmit="SubmitDish">
+        <div class="form-group">
+            <label for="Name">Dish Name</label>
+            <InputText id="Name" @bind-Value="dish.Name" class="form-control" required />
+        </div>
+
+        <div class="form-group">
+            <label for="Description">Description</label>
+            <InputTextArea id="Description" @bind-Value="dish.Description" class="form-control" required />
+        </div>
+
+        <div class="form-group">
+            <label for="Price">Price</label>
+            <InputNumber id="Price" @bind-Value="dish.Price" class="form-control" required />
+        </div>
+
+        <div class="form-group">
+            <label for="Category">Category</label>
+            <InputSelect id="Category" @bind-Value="dish.Category" class="form-control" required>
+                <option value="" disabled>Select a category</option>
+                <option value="burger">Burger</option>
+                <option value="pizza">Pizza</option>
+                <option value="pasta">Pasta</option>
+                <option value="fries">Fries</option>
+            </InputSelect>
+        </div>
+
+        <div class="form-group">
+            <label for="Image">Image</label>
+            <InputFile OnChange="OnFileSelected" class="form-control" />
+        </div>
+
+        <button type="submit" class="btn btn-primary" disabled="@isSubmitting">Add Dish</button>
+    </EditForm>
+</div>
+
+<style>
+    .form-container {
+        max-width: 600px;
+        margin: 0 auto;
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    }
+
+    .form-group {
+        margin-bottom: 15px;
+    }
+
+        .form-group label {
+            font-weight: bold;
+        }
+
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+    button {
+        padding: 10px 20px;
+        background-color: #28a745;
+        color: #fff;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+    }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+    .text-danger {
+        color: #dc3545;
+        font-weight: bold;
+    }
+</style>
