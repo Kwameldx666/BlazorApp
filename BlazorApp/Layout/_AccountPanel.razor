@@ -1,0 +1,162 @@
+﻿@inherits LayoutComponentBase
+@inject HttpClient Http
+@inject NavigationManager Navigation
+<div class="sidebar--menu">
+    <input class="menu-switcher" id="menu-toggle" type="checkbox" />
+    <label class="menu-toggle" data-title="Личный кабинет" for="menu-toggle"></label>
+    <div class="menu menu--personal content-block--padded">
+        <div class="menu-item menu-item--personal">
+            <a class="menu-link menu-link--personal link" href="/reservations">
+                История резерваций
+            </a>
+        </div>
+        <div class="menu-item menu-item--personal">
+            <a class="menu-link menu-link--personal link menu-link--active" href="/address">
+                Адрес доставки
+            </a>
+        </div>
+        <div class="menu-item menu-item--personal">
+            <a class="menu-link menu-link--personal link" href="/contacts">
+                Контактные данные
+            </a>
+        </div>
+        <div class="menu-item menu-item--personal">
+            <a class="menu-link menu-link--personal link" href="javascript:void(0)" @onclick="Logout">
+                Выход
+            </a>
+        </div>
+    </div>
+</div>
+@Body
+@code{
+    private async Task Logout()
+    {
+        try
+        {
+            var response = await Http.PostAsync("api/account/logout", null); // Отправляем POST запрос на ваш контроллер
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Перенаправление пользователя на страницу входа
+                Navigation.NavigateTo("/login", true);
+            }
+            else
+            {
+                // Обрабатываем ошибку, если выход не удался
+                Console.WriteLine("Logout failed: " + response.ReasonPhrase);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error during logout: {ex.Message}");
+        }
+    }
+}
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f4f4f4;
+        color: #333;
+        margin: 0;
+        padding: 0;
+    }
+
+    .page_layout {
+        padding: 20px;
+    }
+
+    .layout {
+        display: flex;
+        justify-content: center;
+    }
+
+    .layout__content {
+        width: 100%;
+        max-width: 1200px;
+        background-color: #fff;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+        overflow: hidden;
+    }
+
+    .checkout-v2-wrapper {
+        display: flex;
+        flex-wrap: wrap;
+        padding: 20px;
+    }
+
+    .co-sidebar--menu {
+        flex: 1;
+        max-width: 300px;
+        margin-right: 20px;
+    }
+
+    .co-menu {
+        background-color: #f9f9f9;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .co-menu-item {
+        margin-bottom: 15px;
+    }
+
+    .co-menu-link {
+        display: block;
+        padding: 10px 15px;
+        color: #333;
+        text-decoration: none;
+        border-radius: 4px;
+        transition: background-color 0.3s;
+    }
+
+        .co-menu-link:hover {
+            background-color: #ececec;
+        }
+
+    .co-menu-link--active {
+        background-color: #007bff;
+        color: #fff;
+    }
+
+    .co-section--content {
+        flex: 2;
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 8px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .co-checkout-title {
+        font-size: 24px;
+        margin-bottom: 20px;
+        color: #333;
+    }
+
+    .co-checkout-block--padded {
+        padding: 20px;
+        background-color: #f9f9f9;
+        border-radius: 8px;
+    }
+
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+        .table th, .table td {
+            padding: 10px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        .table th {
+            background-color: #f4f4f4;
+            text-align: left;
+        }
+
+    .table-striped tbody tr:nth-of-type(odd) {
+        background-color: #f9f9f9;
+    }
+</style>

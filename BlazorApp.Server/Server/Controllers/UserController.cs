@@ -30,7 +30,7 @@ namespace BlazorApp.Controllers
         public async Task<IActionResult> Users(Guid? editId)
         {
             // Асинхронно получаем всех пользователей
-            var users =  _userRepository.GetAllUsers();
+            var users = _userRepository.GetAllUsers();
 
             UserResponse userToEdit = null;
             if (editId.HasValue)
@@ -101,12 +101,27 @@ namespace BlazorApp.Controllers
 
 
         [HttpGet("role")]
-            public IActionResult GetUserRole()
-            {
+        public IActionResult GetUserRole()
+        {
+            // Получаем идентификатор пользователя из сессии
             Guid userId = _sessionService.GetUserId();
-            var userRole = _userRepository.GetUserRole(userId);
-            var userRoleString = userRole.ToString();
-                return Ok(new { Role = userRoleString });
+
+            // Проверка, что идентификатор пользователя не пустой
+            if (userId == Guid.Empty)
+            {
+                // Если пользователь не авторизован, возвращаем 401 Unauthorized
+                return Unauthorized(new { Message = "User is not authorized or not found" });
             }
+
+            // Получаем роль пользователя по его идентификатору
+            var userRole = _userRepository.GetUserRole(userId);
+
+            // Преобразуем роль в строку
+            var userRoleString = userRole.ToString();
+
+            // Возвращаем результат с кодом 200 OK
+            return Ok(new { Role = userRoleString });
         }
+
+    }
 }

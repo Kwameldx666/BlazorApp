@@ -9,25 +9,31 @@
     {
         try
         {
-            var response = await Http.GetAsync("api/reservation/reservations");
+            var response = await Http.GetAsync("api/account/getReservation");
+
             if (response.IsSuccessStatusCode)
             {
+                // Получаем данные о резервациях
                 reservations = await response.Content.ReadFromJsonAsync<IEnumerable<Reservation>>();
             }
             else
             {
-                errorMessage = $"Error: {response.StatusCode}, {response.ReasonPhrase}";
+                // Обрабатываем ошибки, если ответ не успешен
+               errorMessage = $"Error: {response.StatusCode}, {response.ReasonPhrase}";
             }
         }
         catch (HttpRequestException httpRequestException)
         {
+            // Обработка сетевых ошибок
             errorMessage = $"Request error: {httpRequestException.Message}";
         }
         catch (Exception ex)
         {
+            // Общая обработка ошибок
             errorMessage = $"An error occurred: {ex.Message}";
         }
     }
+
 }
 
 <style>
@@ -162,8 +168,8 @@
                                     Контактные данные
                                 </a>
                             </div>
-                            <div class="co-menu-item">
-                                <a class="co-menu-link" href="/logout">
+                            <div class="menu-item menu-item--personal">
+                                <a class="co-menu-link" href="javascript:void(0)" @onclick="Logout">
                                     Выход
                                 </a>
                             </div>
@@ -213,3 +219,27 @@
         </div>
     </main>
 </div>
+@code{
+    private async Task Logout()
+    {
+        try
+        {
+            var response = await Http.PostAsync("api/account/logout", null); // Отправляем POST запрос на ваш контроллер
+
+            if (response.IsSuccessStatusCode)
+            {
+                // Перенаправление пользователя на страницу входа
+                Navigation.NavigateTo("/login", true);
+            }
+            else
+            {
+                // Обрабатываем ошибку, если выход не удался
+                Console.WriteLine("Logout failed: " + response.ReasonPhrase);
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error during logout: {ex.Message}");
+        }
+    }
+}

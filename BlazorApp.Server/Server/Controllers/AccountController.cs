@@ -37,30 +37,45 @@ namespace BlazorApp.WebApi.Controllers
         }
 
         // GET: /api/account/profile
-        [HttpGet("reservations")]
+        [HttpGet("getReservation")]
         public async Task<IActionResult> GetAllReservationsAsync()
-         {
+        {
             try
             {
+                // Получаем идентификатор пользователя из сессии
                 var userId = _sessionService.GetUserId();
+
+                // Проверка, если пользователь не найден
+                if (userId == Guid.Empty)
+                {
+                    // Возвращаем 401 статус, что означает "не авторизован"
+                    return Unauthorized(new { Message = "User not authenticated. Please login." });
+                }
+
+                // Получаем информацию о пользователе
                 var user = await _userService.GetOneUserByIdAsync(userId);
 
+                // Проверяем статус пользователя
                 if (user?.Status == true)
                 {
-                    // Если метод GetAllReservations является асинхронным, вызовите его как асинхронный метод
-                    var reservHistory =  _reservation.GetAllReservations(); // Или просто _reservation.GetAllReservations() если он не асинхронный
+                    // Если метод GetAllReservations асинхронный, нужно использовать await
+                    var reservHistory =  _reservation.GetAllReservations(userId);
 
                     return Ok(reservHistory);
                 }
 
+                // Возвращаем ошибку, если пользователь не найден или не активен
                 return BadRequest(new { Message = "User not found or inactive" });
             }
             catch (Exception ex)
             {
+                // Логируем ошибку
                 _logger.LogError(ex, "An error occurred while fetching reservations.");
+                // Возвращаем ответ с кодом 500
                 return StatusCode(StatusCodes.Status500InternalServerError, new { Message = "An error occurred while processing your request." });
             }
         }
+
 
 
         // GET: /api/account/contacts

@@ -184,11 +184,11 @@ namespace BlazorApp.Repository
         }
 
         // Retrieve all reservations
-        public IEnumerable<Reservation> GetAllReservations()
+        public IEnumerable<Reservation> GetAllReservations(Guid userId)
         {
             try
             {
-                return  _context.Reservations.ToList();
+                return  _context.Reservations.Where(u => u.UserId == userId ).ToList();
             }
             catch (Exception ex)
             {

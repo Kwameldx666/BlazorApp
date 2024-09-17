@@ -100,33 +100,50 @@
     private bool IsAdminOrModerator = false;
     private string errorMessage;
     string Role { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            // Perform GET request to get user role
+            // Выполняем GET-запрос для получения роли пользователя
             var response = await Http.GetAsync("api/Users/role");
 
-            // Check for successful response
+            // Проверяем, если запрос вернул 401 (Unauthorized)
+            if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized)
+            {
+                Navigation.NavigateTo("/login");
+                return; // Останавливаем выполнение, если пользователь не авторизован
+            }
+
+            // Проверяем успешность запроса
             response.EnsureSuccessStatusCode();
 
-            // Read the response content as a string
+            // Читаем ответ как строку
             string responseContent = await response.Content.ReadAsStringAsync();
 
-            // Deserialize JSON response to extract the role
+            // Десериализуем JSON-ответ, чтобы извлечь роль пользователя
             var jsonResponse = JsonSerializer.Deserialize<RoleResponse>(responseContent,
-             new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-            // Assuming jsonResponse.Role contains the actual role string
+            // Получаем роль из десериализованного ответа
             Role = jsonResponse.Role;
 
+            // Проверяем, является ли пользователь Админом или Модератором
             IsAdminOrModerator = Role == "Admin" || Role == "Moderator";
+
+
+        }
+        catch (HttpRequestException httpRequestException)
+        {
+            errorMessage = $"Request error: {httpRequestException.Message}";
         }
         catch (Exception ex)
         {
-            errorMessage = $"Exception: {ex.Message}";
-            // Optionally show the error message to the user
+            errorMessage = $"An error occurred: {ex.Message}";
         }
+
+        
+     
     }
     public class RoleResponse
     {

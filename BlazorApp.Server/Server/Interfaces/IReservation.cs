@@ -16,7 +16,7 @@ namespace BlazorApp.Interfaces
         ReservationResponse GetReservationById(Guid reservationId);
 
         // Retrieves all reservations
-        IEnumerable<Reservation> GetAllReservations();
+        IEnumerable<Reservation> GetAllReservations(Guid userId);
 
         // Retrieves reservations for a specific user
         IEnumerable<Reservation> GetReservationsByUserId(Guid userId);

@@ -7,32 +7,7 @@
             <div class="layout">
                 <div class="layout__content">
                     <div class="content-wrapper section--content_wrapper">
-                        <div class="sidebar--menu">
-                            <input class="menu-switcher" id="menu-toggle" type="checkbox" />
-                            <label class="menu-toggle" data-title="Личный кабинет" for="menu-toggle"></label>
-                            <div class="menu menu--personal content-block--padded">
-                                <div class="menu-item menu-item--personal">
-                                    <a class="menu-link menu-link--personal link" href="/reservations">
-                                        История резерваций
-                                    </a>
-                                </div>
-                                <div class="menu-item menu-item--personal">
-                                    <a class="menu-link menu-link--personal link" href="/address">
-                                        Адрес доставки
-                                    </a>
-                                </div>
-                                <div class="menu-item menu-item--personal">
-                                    <a class="menu-link menu-link--personal link menu-link--active" href="/account/contacts">
-                                        Контактные данные
-                                    </a>
-                                </div>
-                                <div class="menu-item menu-item--personal">
-                                    <a class="menu-link menu-link--personal link" href="/account/logout">
-                                        Выход
-                                    </a>
-                                </div>
-                            </div>
-                        </div>
+                        <_AccountPanel />
 
                         <div class="section--content">
                             <div class="section--checkout_header content-block--padded">
@@ -134,28 +109,7 @@
                 errorMessage = $"Ошибка: {response.StatusCode}";
             }
         }
-        private async Task Logout()
-        {
-            try
-            {
-                var response = await Http.PostAsync("api/account/logout", null); // Отправляем POST запрос на ваш контроллер
-
-                if (response.IsSuccessStatusCode)
-                {
-                    // Перенаправление пользователя на страницу входа
-                    Navigation.NavigateTo("/login", true);
-                }
-                else
-                {
-                    // Обрабатываем ошибку, если выход не удался
-                    Console.WriteLine("Logout failed: " + response.ReasonPhrase);
-                }
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Error during logout: {ex.Message}");
-            }
-        }
+     
         public class ApiResponse
         {
             public bool Success { get; set; }
