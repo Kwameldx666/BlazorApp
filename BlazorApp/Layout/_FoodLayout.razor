@@ -72,15 +72,25 @@
     {
         try
         {
-            // Fetch dishes from server
-            dishes = await Http.GetFromJsonAsync<List<Dish>>("api/dishes");
-            filteredDishes = dishes;
+            var response = await Http.GetAsync("api/dishes");
+
+            if (response.IsSuccessStatusCode)
+            {
+                dishes = await response.Content.ReadFromJsonAsync<List<Dish>>() ?? new List<Dish>();
+                filteredDishes = dishes;
+            }
+            else
+            {
+                Message = $"Failed to load dishes. Status Code: {response.StatusCode}";
+            }
         }
         catch (Exception ex)
         {
-            Message = "An error occurred while loading dishes.";
+            await JS.InvokeVoidAsync("alert", ex.Message);
+            Message = "An error occurred while loading dishes: " + ex.Message;
         }
     }
+
 
     private void FilterDishes(string category)
     {

@@ -44,6 +44,7 @@ builder.Services.AddScoped<IReservation, ReservationRepository>();
 builder.Services.AddScoped<ICartService, RegularUserCartService>();
 builder.Services.AddScoped<ICartService, VIPUserCartService>();
 builder.Services.AddAutoMapper(typeof(Program));
+builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("http://localhost:8080/") });
 
 // Register a singleton service
 builder.Services.AddSingleton<INotification>(sp => NotificationService.Instance);

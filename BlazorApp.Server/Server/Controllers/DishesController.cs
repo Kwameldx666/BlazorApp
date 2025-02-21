@@ -18,7 +18,11 @@ namespace BlazorApp.Server.Controllers
         private readonly IDishes _dishes;
         private readonly ISession _session;
 
-
+        private static List<Dish> dishes = new List<Dish>
+    {
+        new Dish { Id = Guid.NewGuid(), Name = "Pasta", Description = "Italian pasta", Price = 12.99M, Category = "Main" },
+        new Dish { Id = Guid.NewGuid(), Name = "Pizza", Description = "Cheese pizza", Price = 15.99M, Category = "Main" }
+    };
         public DishesController(IDishes dishes, ISession session)
         {
             _dishes = dishes;
@@ -30,10 +34,24 @@ namespace BlazorApp.Server.Controllers
         [HttpGet]
         public async Task<IActionResult> Dishes()
         {
-            IEnumerable<Dish> dishes = _dishes.GetAllDishes();
+            try
+            {
+                var dishes = _dishes.GetAllDishes();
 
-            return Ok(dishes);
+                if (dishes == null || !dishes.Any())
+                {
+                    return NotFound("No dishes available.");
+                }
+
+                return Ok(dishes);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error in DishesController: {ex.Message}");
+                return StatusCode(500, "Internal server error");
+            }
         }
+
 
         // GET: api/Dishes/{id}
         [HttpGet("{id}")]
@@ -110,7 +128,7 @@ namespace BlazorApp.Server.Controllers
 
 
         // POST: api/Dishes/Edit/{id}
-        [HttpPost("EditDish")]
+        [HttpPut("EditDish")]
         public async Task<IActionResult> EditDish([FromForm] DishDto dishDto)
         {
             if (!ModelState.IsValid)
@@ -166,8 +184,8 @@ namespace BlazorApp.Server.Controllers
             }
         }
 
-        [HttpPost("DeleteDish")]
-        public async Task<IActionResult> DeleteDish([FromBody] Guid id)
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteDish(Guid id)
         {
             var dishResponse = await _dishes.DeleteDishAsync(id);
             if (dishResponse.Status)

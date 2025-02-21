@@ -93,7 +93,7 @@
         {
             try
             {
-                var response = await Http.PostAsJsonAsync("/api/Dishes/DeleteDish", id);
+                var response = await Http.DeleteAsync($"api/dishes/{id}");
 
                 if (response.IsSuccessStatusCode)
                 {

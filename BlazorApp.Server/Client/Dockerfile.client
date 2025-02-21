@@ -1,0 +1,22 @@
+# Для сборки фронтенда
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /app
+
+# Копируем файлы проекта
+COPY BlazorApp.Client/*.csproj BlazorApp.Client/
+RUN dotnet restore BlazorApp.Client/BlazorApp.Client.csproj
+
+# Копируем остальные файлы
+COPY . .
+
+# Собираем проект
+WORKDIR /app/BlazorApp.Client
+RUN dotnet publish -c Release -r linux-x64 -o /app/publish
+
+# Для запуска
+FROM nginx:alpine AS runtime
+# Копируем собранные файлы в директорию, доступную для Nginx
+COPY --from=build /app/publish/wwwroot /usr/share/nginx/html
+
+# Открываем порт 80 для веб-сервера
+EXPOSE 80

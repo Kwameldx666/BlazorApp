@@ -15,6 +15,8 @@ namespace BlazorApp.DbModel
         public DbSet<ReservationHistory> ReservationsHistory { get; set; }
         public DbSet<PaymentDetails> PaymentDetails { get; set; }
         public DbSet<Session> Sessions { get; set; }
+        public DbSet<CartItem> CartItems { get; set; }
+
         public DbSet<DeliveryAddress> Deliveryaddress { get; set; }
         public DbSet<Cart> Cart { get; set; }
         public DbSet<PaymentRecord> PaymentRecords { get; set; }
@@ -38,6 +40,12 @@ namespace BlazorApp.DbModel
                 .WithOne(c => c.User)  // Указываем связь обратно, если она существует
                 .HasForeignKey<UserData>(u => u.CartId)
     .OnDelete(DeleteBehavior.Cascade);
+
+            modelBuilder.Entity<CartItem>()
+    .HasOne(ci => ci.Dish)
+    .WithMany(d => d.CartItems)
+    .HasForeignKey(ci => ci.DishId)
+    .OnDelete(DeleteBehavior.Cascade); // Каскадное удаление
 
             // Связь между Cart и User
             modelBuilder.Entity<Cart>()

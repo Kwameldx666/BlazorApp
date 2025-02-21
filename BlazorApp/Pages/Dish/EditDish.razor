@@ -110,7 +110,7 @@
                 content.Add(imageContent, "imageFile", imageFile.Name);
             }
 
-            var response = await Http.PostAsync($"/api/Dishes/EditDish", content);
+            var response = await Http.PutAsync($"/api/Dishes/EditDish", content);
 
             if (response.IsSuccessStatusCode)
             {
