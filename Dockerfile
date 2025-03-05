@@ -1,21 +1,18 @@
-# Используем SDK для сборки
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /app
-
-# Копируем файлы проектов отдельно для кэширования
-COPY BlazorApp/BlazorApp.csproj BlazorApp/
+COPY BlazorApp.sln ./
 COPY BlazorApp.Server/Shared/BlazorApp.Shared.csproj BlazorApp.Server/Shared/
+COPY BlazorApp.Server/Server/BlazorApp.Server.csproj BlazorApp.Server/Server/
+COPY BlazorApp/BlazorApp.csproj BlazorApp/
+RUN dotnet restore BlazorApp.Server/Server/BlazorApp.Server.csproj
+COPY BlazorApp.Server/Shared/ BlazorApp.Server/Shared/
+COPY BlazorApp.Server/Server/ BlazorApp.Server/Server/
+COPY BlazorApp/ BlazorApp/
+WORKDIR /app/BlazorApp.Server/Server
+RUN dotnet publish -c Release -o /app/out
 
-# Восстанавливаем зависимости
-WORKDIR /app/BlazorApp
-RUN dotnet restore
-
-# Копируем весь код и собираем
-COPY . .
-RUN dotnet publish -c Release -o /app/build
-
-# Используем Nginx для хостинга WASM
-FROM nginx:alpine AS final
-COPY --from=build /app/build/wwwroot /usr/share/nginx/html
-EXPOSE 80
-CMD ["nginx", "-g", "daemon off;"]
+FROM mcr.microsoft.com/dotnet/aspnet:8.0
+WORKDIR /app
+COPY --from=build /app/out .
+EXPOSE 8080 
+ENTRYPOINT ["dotnet", "BlazorApp.Server.dll"]

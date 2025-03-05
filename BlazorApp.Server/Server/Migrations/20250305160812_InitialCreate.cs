@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace BlazorApp.Server.Migrations
 {
     /// <inheritdoc />
-    public partial class newMigro : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -195,7 +195,7 @@ namespace BlazorApp.Server.Migrations
                 });
 
             migrationBuilder.CreateTable(
-                name: "CartItem",
+                name: "CartItems",
                 columns: table => new
                 {
                     CartId = table.Column<Guid>(type: "uniqueidentifier", nullable: false),
@@ -208,21 +208,21 @@ namespace BlazorApp.Server.Migrations
                 },
                 constraints: table =>
                 {
-                    table.PrimaryKey("PK_CartItem", x => new { x.CartId, x.DishId });
+                    table.PrimaryKey("PK_CartItems", x => new { x.CartId, x.DishId });
                     table.ForeignKey(
-                        name: "FK_CartItem_Cart_CartId",
+                        name: "FK_CartItems_Cart_CartId",
                         column: x => x.CartId,
                         principalTable: "Cart",
                         principalColumn: "CartId",
                         onDelete: ReferentialAction.Cascade);
                     table.ForeignKey(
-                        name: "FK_CartItem_Dishes_DishId",
+                        name: "FK_CartItems_Dishes_DishId",
                         column: x => x.DishId,
                         principalTable: "Dishes",
                         principalColumn: "Id",
                         onDelete: ReferentialAction.Restrict);
                     table.ForeignKey(
-                        name: "FK_CartItem_Users_UserId",
+                        name: "FK_CartItems_Users_UserId",
                         column: x => x.UserId,
                         principalTable: "Users",
                         principalColumn: "Id",
@@ -236,13 +236,13 @@ namespace BlazorApp.Server.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
-                name: "IX_CartItem_DishId",
-                table: "CartItem",
+                name: "IX_CartItems_DishId",
+                table: "CartItems",
                 column: "DishId");
 
             migrationBuilder.CreateIndex(
-                name: "IX_CartItem_UserId",
-                table: "CartItem",
+                name: "IX_CartItems_UserId",
+                table: "CartItems",
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
@@ -266,7 +266,7 @@ namespace BlazorApp.Server.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
-                name: "CartItem");
+                name: "CartItems");
 
             migrationBuilder.DropTable(
                 name: "Deliveryaddress");

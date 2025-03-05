@@ -42,6 +42,11 @@ namespace BlazorApp.Server.Repository
             return new PaymentResponse { Success = true, Message = $"VIP Payment successful. Discount applied: {discount:C}" };
         }
 
+        public PaymentResponse ProcessPayment(Reservation reservation, PaymentDetails paymentDetails)
+        {
+            throw new NotImplementedException();
+        }
+
         public PaymentResponse RefundPayment(Guid reservationId, Guid userId)
         {
             var user = _context.Users.FirstOrDefault(u => u.Id == userId);
@@ -60,6 +65,11 @@ namespace BlazorApp.Server.Repository
             _context.SaveChanges();
 
             return new PaymentResponse { Success = true, Message = "VIP Refund successful. Full amount refunded." };
+        }
+
+        public PaymentResponse RefundPayment(Guid reservationId)
+        {
+            throw new NotImplementedException();
         }
     }
 
@@ -94,6 +104,11 @@ namespace BlazorApp.Server.Repository
             return new PaymentResponse { Success = true, Message = "Payment successful." };
         }
 
+        public PaymentResponse ProcessPayment(Reservation reservation, PaymentDetails paymentDetails)
+        {
+            throw new NotImplementedException();
+        }
+
         public PaymentResponse RefundPayment(Guid reservationId, Guid userId)
         {
             var user = _context.Users.FirstOrDefault(u => u.Id == userId);
@@ -114,6 +129,11 @@ namespace BlazorApp.Server.Repository
             _context.SaveChanges();
 
             return new PaymentResponse { Success = true, Message = $"Refund successful. 50% refunded: {refundAmount:C}" };
+        }
+
+        public PaymentResponse RefundPayment(Guid reservationId)
+        {
+            throw new NotImplementedException();
         }
     }
 }

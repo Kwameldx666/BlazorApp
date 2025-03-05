@@ -10,7 +10,7 @@ using System.Text.Json.Serialization;
 using ISession = BlazorApp.Interfaces.ISession;
 
 var builder = WebApplication.CreateBuilder(args);
-
+builder.WebHost.UseUrls("http://[::]:8080");
 // Configure database context
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
