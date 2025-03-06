@@ -1,0 +1,26 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /app
+
+# Копируем файлы проектов с учётом их расположения
+COPY ./BlazorApp.Server/Shared/BlazorApp.Shared.csproj ./BlazorApp.Server/Shared/
+COPY ./BlazorApp.Server/Server/BlazorApp.Server.csproj ./BlazorApp.Server/Server/
+COPY ./BlazorApp/BlazorApp.csproj ./BlazorApp/
+
+# Восстанавливаем зависимости
+RUN dotnet restore ./BlazorApp.Server/Server/BlazorApp.Server.csproj
+
+# Копируем весь код
+COPY . .
+
+# Собираем проект
+RUN dotnet build ./BlazorApp.Server/Server/BlazorApp.Server.csproj -c Release -o /app/build
+
+# Публикуем проект
+RUN dotnet publish ./BlazorApp.Server/Server/BlazorApp.Server.csproj -c Release -o /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+COPY --from=build /app/publish .
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8080
+ENTRYPOINT ["dotnet", "BlazorApp.Server.dll"]

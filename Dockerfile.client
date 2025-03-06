@@ -1,0 +1,45 @@
+# Используем .NET SDK 8.0 для этапа сборки.
+# Этот образ нужен для компиляции и публикации Blazor WebAssembly приложения.
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+
+# Устанавливаем рабочую директорию /app внутри контейнера.
+WORKDIR /app
+
+# Копируем файл BlazorApp.Shared.csproj из папки BlazorApp.Server/Shared.
+# Это общий проект, который может использоваться клиентом (например, для моделей или общей логики).
+COPY ./BlazorApp.Server/Shared/BlazorApp.Shared.csproj ./BlazorApp.Server/Shared/
+
+# Копируем файл BlazorApp.csproj из папки BlazorApp.
+# Это основной проект клиента Blazor WebAssembly.
+COPY ./BlazorApp/BlazorApp.csproj ./BlazorApp/
+
+# Восстанавливаем зависимости для клиентского проекта.
+# Команда dotnet restore загружает все NuGet-пакеты, необходимые для BlazorApp.csproj.
+RUN dotnet restore ./BlazorApp/BlazorApp.csproj
+
+# Копируем весь остальной код проекта в /app.
+# Теперь у нас есть все файлы для сборки клиентского приложения.
+COPY . .
+
+# Публикуем клиентское приложение в режиме Release.
+# Команда dotnet publish создаёт статические файлы Blazor WASM в папке /app/publish.
+RUN dotnet publish ./BlazorApp/BlazorApp.csproj -c Release -o /app/publish
+
+# Используем образ Nginx на базе Alpine для этапа выполнения.
+# Nginx будет раздавать статические файлы Blazor WebAssembly, что идеально для WASM-приложений.
+FROM nginx:alpine AS runtime
+
+# Устанавливаем рабочую директорию /usr/share/nginx/html.
+# Это стандартная папка Nginx для размещения статических файлов.
+WORKDIR /usr/share/nginx/html
+
+# Копируем опубликованные статические файлы из папки wwwroot (результат публикации Blazor WASM).
+COPY --from=build /app/publish/wwwroot .
+
+# Указываем, что контейнер будет использовать порт 80.
+# Nginx по умолчанию слушает порт 80 для HTTP-запросов.
+EXPOSE 80
+
+# Запускаем Nginx в foreground-режиме.
+# Флаг -g "daemon off;" предотвращает запуск Nginx как фонового процесса, что требуется для Docker.
+CMD ["nginx", "-g", "daemon off;"]

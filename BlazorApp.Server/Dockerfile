@@ -1,28 +1,21 @@
-# Используем официальный образ .NET SDK для сборки
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /app
 
-# Копируем файлы проектов отдельно для кеширования
-COPY Server/BlazorApp.Server.csproj Server/
-COPY Shared/BlazorApp.Shared.csproj Shared/
+COPY ./BlazorApp.Server/Shared/BlazorApp.Shared.csproj ./BlazorApp.Server/Shared/
+COPY ./BlazorApp.Server/BlazorApp.Server.csproj ./BlazorApp.Server/
+COPY ./BlazorApp/BlazorApp.csproj ./BlazorApp/
 
-# Восстанавливаем зависимости
-RUN dotnet restore Server/BlazorApp.Server.csproj
+RUN dotnet restore ./BlazorApp.Server/BlazorApp.Server.csproj
 
-# Копируем весь исходный код
 COPY . .
 
-# Сборка и публикация
-RUN dotnet publish Server/BlazorApp.Server.csproj -c Release -o /app/publish
+RUN dotnet build ./BlazorApp.Server/BlazorApp.Server.csproj -c Release -o /app/build
 
-# Используем официальный образ ASP.NET Core для запуска
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
+RUN dotnet publish ./BlazorApp.Server/BlazorApp.Server.csproj -c Release -o /app/publish
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
-EXPOSE 80
-ENV ASPNETCORE_URLS=http://+:80
-
-# Копируем опубликованные файлы
 COPY --from=build /app/publish .
-
-# Запуск приложения
+EXPOSE 8080
+ENV ASPNETCORE_URLS=http://+:8080
 ENTRYPOINT ["dotnet", "BlazorApp.Server.dll"]
