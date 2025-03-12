@@ -87,7 +87,7 @@ namespace BlazorApp.Server.Controllers
                 };
                 if (dishDto.imageFile != null && dishDto.imageFile.Length > 0)
                 {
-                    var projectDirectory = @"C:\Users\wonde\source\repos\BlazorApp\BlazorApp";
+                    var projectDirectory = @"C:\Users\Kwameldx666\source\repos\BlazorApp\BlazorApp";
                     var ImagesDirectory = Path.Combine(projectDirectory, "wwwroot", "Images");
 
 
@@ -153,7 +153,7 @@ namespace BlazorApp.Server.Controllers
             }
             if (dishDto.imageFile != null && dishDto.imageFile.Length > 0)
             {
-                var projectDirectory = @"C:\Users\wonde\source\repos\BlazorApp\BlazorApp";
+                var projectDirectory = @"C:\Users\Kwameldx666\source\repos\BlazorApp\BlazorApp";
                 var ImagesDirectory = Path.Combine(projectDirectory, "wwwroot", "Images");
 
 

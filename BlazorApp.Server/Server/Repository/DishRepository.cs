@@ -1,39 +1,53 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
+using System.Threading.Tasks;
 using BlazorApp.DbModel;
-using BlazorApp.Models;
-using Microsoft.EntityFrameworkCore;
 using BlazorApp.Interfaces;
 using BlazorApp.Models;
 using BlazorApp.Models.Response;
+using BlazorApp.Server.Helpers;
+using Microsoft.EntityFrameworkCore;
 
 namespace BlazorApp.Repository
 {
     public class DishRepository : IDishes
     {
         private readonly ApplicationDbContext _context;
+        private readonly WebSocketConnectionManager _wsManager;
 
-        public DishRepository(ApplicationDbContext context)
+        public DishRepository(ApplicationDbContext context, WebSocketConnectionManager wsManager)
         {
             _context = context;
+            _wsManager = wsManager;
         }
 
-        // Retrieves all available dishes
+        // Метод для отправки уведомлений всем клиентам
+        private async Task NotifyClients(string action, Dish dish)
+        {
+            var message = JsonSerializer.Serialize(new
+            {
+                Action = action,
+                Dish = dish
+            });
+            await _wsManager.BroadcastMessageAsync(message);
+        }
+
         public IEnumerable<Dish> GetAllDishes()
         {
             try
             {
                 var dishes = _context.Dishes.ToList();
 
-                if (!dishes.Any()) // Если список пуст, создаём фиктивные блюда
+                if (!dishes.Any())
                 {
                     return new List<Dish>
-            {
-                new Dish { Id = Guid.NewGuid(), Name = "Импровизированное блюдо 1", Description = "Пример описания", Price = 10.99M, Category = "Общий" },
-                new Dish { Id = Guid.NewGuid(), Name = "Импровизированное блюдо 2", Description = "Пример описания", Price = 12.50M, Category = "Общий" },
-                new Dish { Id = Guid.NewGuid(), Name = "Импровизированное блюдо 3", Description = "Пример описания", Price = 8.75M, Category = "Общий" }
-            };
+                    {
+                        new Dish { Id = Guid.NewGuid(), Name = "Импровизированное блюдо 1", Description = "Пример описания", Price = 10.99M, Category = "Общий" },
+                        new Dish { Id = Guid.NewGuid(), Name = "Импровизированное блюдо 2", Description = "Пример описания", Price = 12.50M, Category = "Общий" },
+                        new Dish { Id = Guid.NewGuid(), Name = "Импровизированное блюдо 3", Description = "Пример описания", Price = 8.75M, Category = "Общий" }
+                    };
                 }
 
                 return dishes;
@@ -45,8 +59,6 @@ namespace BlazorApp.Repository
             }
         }
 
-
-        // Retrieves a dish by its ID
         public DishResponse GetDishById(Guid dishId)
         {
             if (dishId == Guid.Empty)
@@ -63,7 +75,6 @@ namespace BlazorApp.Repository
                 var dish = _context.Dishes.Find(dishId);
                 if (dish == null)
                 {
-                    // Если блюдо не найдено, создаем его с предварительно заданным названием
                     var suggestedDishes = new List<string> { "Пицца Маргарита", "Паста Карбонара", "Салат Цезарь" };
                     var random = new Random();
                     var newDishName = suggestedDishes[random.Next(suggestedDishes.Count)];
@@ -80,6 +91,9 @@ namespace BlazorApp.Repository
 
                     _context.Dishes.Add(newDish);
                     _context.SaveChanges();
+
+                    // Уведомляем клиентов о новом блюде
+                    _ = NotifyClients("DishAdded", newDish);
 
                     return new DishResponse
                     {
@@ -107,8 +121,6 @@ namespace BlazorApp.Repository
             }
         }
 
-
-        // Adds a new dish
         public DishResponse AddDish(Dish dish)
         {
             if (dish == null)
@@ -126,6 +138,9 @@ namespace BlazorApp.Repository
                 _context.Dishes.Add(dish);
                 _context.SaveChanges();
 
+                // Уведомляем клиентов о новом блюде
+                _ = NotifyClients("DishAdded", dish);
+
                 return new DishResponse
                 {
                     Status = true,
@@ -135,7 +150,6 @@ namespace BlazorApp.Repository
             }
             catch (Exception ex)
             {
-                // Log the error
                 Console.WriteLine($"Error adding dish: {ex.Message}");
                 return new DishResponse
                 {
@@ -145,7 +159,6 @@ namespace BlazorApp.Repository
             }
         }
 
-        // Updates an existing dish
         public DishResponse UpdateDish(Guid dishId, Dish dish)
         {
             if (dishId == Guid.Empty || dish == null)
@@ -159,7 +172,6 @@ namespace BlazorApp.Repository
 
             try
             {
-                // Find the existing dish
                 var existingDish = _context.Dishes.Find(dishId);
                 if (existingDish == null)
                 {
@@ -170,16 +182,17 @@ namespace BlazorApp.Repository
                     };
                 }
 
-                // Update fields
                 existingDish.Name = dish.Name;
                 existingDish.Description = dish.Description;
                 existingDish.Price = dish.Price;
                 existingDish.Category = dish.Category;
-                existingDish.ImageUrl = dish.ImageUrl; // Update image URL if provided
+                existingDish.ImageUrl = dish.ImageUrl;
                 existingDish.UpdatedAt = DateTime.Now;
 
-                // Save changes to the database
                 _context.SaveChanges();
+
+                // Уведомляем клиентов об обновлении блюда
+                _ = NotifyClients("DishUpdated", existingDish);
 
                 return new DishResponse
                 {
@@ -190,7 +203,6 @@ namespace BlazorApp.Repository
             }
             catch (Exception ex)
             {
-                // Log the error
                 Console.WriteLine($"Error updating dish: {ex.Message}");
                 return new DishResponse
                 {
@@ -200,9 +212,6 @@ namespace BlazorApp.Repository
             }
         }
 
-
-
-        // Deletes a dish by its ID
         public async Task<DishResponse> DeleteDishAsync(Guid dishId)
         {
             if (dishId == Guid.Empty)
@@ -226,16 +235,17 @@ namespace BlazorApp.Repository
                     };
                 }
 
-                // Удаление всех CartItem, которые ссылаются на это блюдо
                 var cartItems = await _context.CartItems.Where(ci => ci.DishId == dishId).ToListAsync();
                 if (cartItems.Any())
                 {
-                    _context.CartItems.RemoveRange(cartItems); // Удаляем зависимые записи
+                    _context.CartItems.RemoveRange(cartItems);
                 }
 
-                // Удаление самого блюда
                 _context.Dishes.Remove(dish);
                 await _context.SaveChangesAsync();
+
+                // Уведомляем клиентов об удалении блюда
+                await NotifyClients("DishDeleted", dish);
 
                 return new DishResponse
                 {
@@ -245,7 +255,6 @@ namespace BlazorApp.Repository
             }
             catch (Exception ex)
             {
-                // Логирование ошибки
                 Console.WriteLine($"Error deleting dish: {ex.Message}");
                 return new DishResponse
                 {
@@ -254,6 +263,5 @@ namespace BlazorApp.Repository
                 };
             }
         }
-
     }
 }

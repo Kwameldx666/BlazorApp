@@ -26,46 +26,55 @@ namespace BlazorApp.Repository
         public static NotificationService Instance => _instance.Value;
 
         // Method to send notifications
-        public void SendNotification(string message, string recipientEmail)
+        public bool SendNotification(string messageSend, string email)
         {
-            // Retrieve settings from configuration
-            var smtpServer = _configuration["EmailSettings:SmtpServer"];
-            var port = int.Parse(_configuration["EmailSettings:Port"]);
-            var senderEmail = _configuration["EmailSettings:SenderEmail"];
-            var senderName = _configuration["EmailSettings:SenderName"];
-            var password = _configuration["EmailSettings:Password"];
-
-            // Create the email message
-            var mailMessage = new MailMessage
+            try
             {
-                From = new MailAddress(senderEmail, senderName),
-                Subject = "Notification",
-                Body = message,
-                IsBodyHtml = true
-            };
+                var smtpServer = _configuration["EmailSettings:SmtpServer"];
+                var senderEmail = _configuration["EmailSettings:SenderEmail"];
+                var senderName = _configuration["EmailSettings:SenderName"];
+                var appPassword = _configuration["EmailSettings:Password"]; // Пароль приложения!
 
-            mailMessage.To.Add(recipientEmail);
-
-            // Configure the SMTP client
-            using (var smtpClient = new SmtpClient(smtpServer, port)
-            {
-                Credentials = new NetworkCredential(senderEmail, password),
-                EnableSsl = port == 587 // Commonly used for TLS
-            })
-            {
-                try
+                if (!int.TryParse(_configuration["EmailSettings:Port"], out int port))
                 {
-                    smtpClient.Send(mailMessage);
-                    Console.WriteLine("Notification sent successfully.");
+                    Console.WriteLine("Invalid SMTP port in configuration.");
+                    return false;
                 }
-                catch (Exception ex)
+
+                var mailMessage = new MailMessage
                 {
-                    // Log error message
-                    Console.WriteLine($"Error sending notification: {ex.Message}");
+                    From = new MailAddress(senderEmail, senderName),
+                    Subject = "Notification",
+                    Body = messageSend,
+                    IsBodyHtml = false
+                };
+
+                mailMessage.To.Add(email);
+
+                using (var smtpClient = new SmtpClient(smtpServer, port))
+                {
+                    smtpClient.Credentials = new NetworkCredential(senderEmail, appPassword);
+                    smtpClient.EnableSsl = true;
+                    smtpClient.DeliveryMethod = SmtpDeliveryMethod.Network;
+                    smtpClient.UseDefaultCredentials = false;
+
+                    smtpClient.Send(mailMessage);
+                    Console.WriteLine("Email sent successfully.");
+                    return true;
                 }
             }
+            catch (SmtpException ex)
+            {
+                Console.WriteLine($"SMTP Error: {ex.StatusCode} - {ex.Message}");
+                return false;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"General error: {ex}");
+                return false;
+            }
         }
-    }
+        }
 }
 
 

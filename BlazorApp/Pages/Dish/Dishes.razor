@@ -1,117 +1,10 @@
 ﻿@page "/dishes"
 @inject HttpClient Http
 @inject IJSRuntime JS
-@using BlazorApp.Models
 @inject NavigationManager NavigationManager
-@using System.Text.Json;
-@code {
-    private IEnumerable<Dish> dishes;
-    private string errorMessage;
-    private bool isLoading = true;
-    string Role { get; set; }
-    bool IsAdminOrModerator { get; set; } = false;
-
-
-    protected override async Task OnInitializedAsync()
-    {
-        try
-        {
-            // Perform GET request to get user role
-            var response = await Http.GetAsync("api/Users/role");
-
-            // Check for successful response
-            response.EnsureSuccessStatusCode();
-
-            // Read the response content as a string
-            string responseContent = await response.Content.ReadAsStringAsync();
-
-            // Deserialize JSON response to extract the role
-            var jsonResponse = JsonSerializer.Deserialize<RoleResponse>(responseContent,
-             new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-            // Assuming jsonResponse.Role contains the actual role string
-            Role = jsonResponse.Role;
-
-            IsAdminOrModerator = Role == "Admin" || Role == "Moderator";
-            if (!IsAdminOrModerator)
-            {
-                NavigationManager.NavigateTo("/Error404");
-            }
-            else
-                await LoadDishes();
-
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Exception: {ex.Message}";
-            // Optionally show the error message to the user
-        }
-
-
-
-        await LoadDishes();
-    }
-    public class RoleResponse
-    {
-        public string Role { get; set; }
-    }
-
-    private async Task LoadDishes()
-    {
-        try
-        {
-            // Задержка 3 секунды
-            await Task.Delay(3000);
-
-            var response = await Http.GetAsync("/api/Dishes");
-            if (response.IsSuccessStatusCode)
-            {
-                dishes = await response.Content.ReadFromJsonAsync<IEnumerable<Dish>>();
-                if (dishes == null || !dishes.Any())
-                {
-                    errorMessage = "No dishes available.";
-                }
-            }
-            else
-            {
-                errorMessage = "Failed to load dishes.";
-            }
-        }
-        catch (Exception ex)
-        {
-            errorMessage = $"Error: {ex.Message}";
-        }
-        finally
-        {
-            isLoading = false;
-        }
-    }
-
-    private async Task DeleteDish(Guid id)
-    {
-        if (await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this dish?"))
-        {
-            try
-            {
-                var response = await Http.DeleteAsync($"api/dishes/{id}");
-
-                if (response.IsSuccessStatusCode)
-                {
-                    await LoadDishes(); // Обновляем список после удаления
-                    await JS.InvokeVoidAsync("alert", "Dish deleted successfully!");
-                }
-                else
-                {
-                    await JS.InvokeVoidAsync("alert", "Failed to delete the dish. Please try again.");
-                }
-            }
-            catch (Exception ex)
-            {
-                await JS.InvokeVoidAsync("alert", $"An error occurred. Please try again. {ex.Message}");
-            }
-        }
-    }
-}
+@using BlazorApp.Models
+@using System.Text.Json
+@implements IAsyncDisposable
 
 <div class="admin-container">
     <div class="admin-header">
@@ -175,6 +68,150 @@
         }
     }
 </div>
+
+@code {
+    private List<Dish> dishes = new();
+    private string errorMessage;
+    private bool isLoading = true;
+    private string Role { get; set; }
+    private bool IsAdminOrModerator { get; set; } = false;
+    private DotNetObjectReference<Dishes>? _dotNetRef;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            var response = await Http.GetAsync("api/Users/role");
+            response.EnsureSuccessStatusCode();
+            string responseContent = await response.Content.ReadAsStringAsync();
+            var jsonResponse = JsonSerializer.Deserialize<RoleResponse>(responseContent,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+            Role = jsonResponse.Role;
+            IsAdminOrModerator = Role == "Admin" || Role == "Moderator";
+
+            if (!IsAdminOrModerator)
+            {
+                NavigationManager.NavigateTo("/Error404");
+                return;
+            }
+
+            await LoadDishes();
+
+            _dotNetRef = DotNetObjectReference.Create(this);
+            await JS.InvokeVoidAsync("connectWebSocket", _dotNetRef); // Просто вызываем без возврата
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Exception: {ex.Message}";
+            isLoading = false;
+        }
+    }
+
+    private async Task LoadDishes()
+    {
+        try
+        {
+            await Task.Delay(3000);
+            var response = await Http.GetAsync("/api/Dishes");
+            if (response.IsSuccessStatusCode)
+            {
+                dishes = (await response.Content.ReadFromJsonAsync<IEnumerable<Dish>>())?.ToList() ?? new List<Dish>();
+                if (!dishes.Any())
+                {
+                    errorMessage = "No dishes available.";
+                }
+            }
+            else
+            {
+                errorMessage = "Failed to load dishes.";
+            }
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task DeleteDish(Guid id)
+    {
+        if (await JS.InvokeAsync<bool>("confirm", "Are you sure you want to delete this dish?"))
+        {
+            try
+            {
+                var response = await Http.DeleteAsync($"api/Dishes/{id}");
+                if (response.IsSuccessStatusCode)
+                {
+                    await JS.InvokeVoidAsync("alert", "Dish deleted successfully!");
+                }
+                else
+                {
+                    await JS.InvokeVoidAsync("alert", "Failed to delete the dish. Please try again.");
+                }
+            }
+            catch (Exception ex)
+            {
+                await JS.InvokeVoidAsync("alert", $"An error occurred. Please try again. {ex.Message}");
+            }
+        }
+    }
+
+    [JSInvokable]
+    public async Task OnMessageReceived(string message)
+    {
+        try
+        {
+            var data = JsonSerializer.Deserialize<WebSocketMessage>(message, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            string action = data.Action;
+            var dish = data.Dish;
+
+            switch (action)
+            {
+                case "DishAdded":
+                    dishes.Add(dish);
+                    break;
+                case "DishUpdated":
+                    var existingDish = dishes.FirstOrDefault(d => d.Id == dish.Id);
+                    if (existingDish != null)
+                    {
+                        existingDish.Name = dish.Name;
+                        existingDish.Description = dish.Description;
+                        existingDish.Price = dish.Price;
+                        existingDish.Category = dish.Category;
+                        existingDish.ImageUrl = dish.ImageUrl;
+                    }
+                    break;
+                case "DishDeleted":
+                    dishes.RemoveAll(d => d.Id == dish.Id);
+                    break;
+            }
+
+            await InvokeAsync(StateHasChanged);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error in OnMessageReceived: {ex.Message}");
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_dotNetRef != null)
+        {
+            await JS.InvokeVoidAsync("closeWebSocket"); // Закрываем соединение
+            _dotNetRef.Dispose();
+        }
+    }
+
+    public class RoleResponse
+    {
+        public string Role { get; set; }
+    }
+}
 
 <style>
     .admin-container {

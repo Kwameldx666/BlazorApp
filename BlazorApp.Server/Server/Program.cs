@@ -48,6 +48,7 @@ builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri("http://
 
 // Register a singleton service
 builder.Services.AddSingleton<INotification>(sp => NotificationService.Instance);
+builder.Services.AddSingleton<WebSocketConnectionManager>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", builder =>
@@ -57,7 +58,31 @@ builder.Services.AddCors(options =>
 });
 
 
+
 var app = builder.Build();
+// Настраиваем middleware для WebSocket
+app.UseWebSockets();
+
+app.Use(async (context, next) =>
+{
+    if (context.Request.Path == "/ws")
+    {
+        if (context.WebSockets.IsWebSocketRequest)
+        {
+            var webSocket = await context.WebSockets.AcceptWebSocketAsync();
+            var wsManager = app.Services.GetRequiredService<WebSocketConnectionManager>();
+            await wsManager.HandleWebSocketAsync(webSocket);
+        }
+        else
+        {
+            context.Response.StatusCode = 400;
+        }
+    }
+    else
+    {
+        await next();
+    }
+});
 app.UseCors("AllowAll");
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())

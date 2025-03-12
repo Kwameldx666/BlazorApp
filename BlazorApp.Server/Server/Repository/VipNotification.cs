@@ -19,42 +19,51 @@ namespace BlazorApp.Server.Repository
 
         public static VipNotification Instance => _instance.Value;
 
-        public void SendNotification(string message, string recipientEmail)
+        public bool SendNotification(string message, string recipientEmail)
         {
-            var smtpServer = _configuration["EmailSettings:SmtpServer"];
-            var port = int.Parse(_configuration["EmailSettings:Port"]);
-            var senderEmail = _configuration["EmailSettings:SenderEmail"];
-            var senderName = _configuration["EmailSettings:SenderName"];
-            var password = _configuration["EmailSettings:Password"];
-
-            // VIP-уведомление с уникальной темой и HTML-оформлением
-            var mailMessage = new MailMessage
+            try
             {
-                From = new MailAddress(senderEmail, senderName),
-                Subject = "VIP Notification: Exclusive Update",
-                Body = $"<h2>Dear VIP,</h2><p>{message}</p><p>Thank you for being a valued VIP member!</p>",
-                IsBodyHtml = true
-            };
+                // Извлекаем настройки
+                var smtpServer = _configuration["EmailSettings:SmtpServer"];
+                var senderEmail = _configuration["EmailSettings:SenderEmail"];
+                var senderName = _configuration["EmailSettings:SenderName"];
+                var password = _configuration["EmailSettings:Password"];
 
-            mailMessage.To.Add(recipientEmail);
-
-            using (var smtpClient = new SmtpClient(smtpServer, port)
-            {
-                Credentials = new NetworkCredential(senderEmail, password),
-                EnableSsl = port == 587
-            })
-            {
-                try
+                if (!int.TryParse(_configuration["EmailSettings:Port"], out int port))
                 {
-                    smtpClient.Send(mailMessage);
-                    Console.WriteLine("VIP notification sent successfully.");
+                    Console.WriteLine("Invalid SMTP port in configuration.");
+                    return false;
                 }
-                catch (Exception ex)
+
+                var mailMessage = new MailMessage
                 {
-                    Console.WriteLine($"Error sending VIP notification: {ex.Message}");
+                    From = new MailAddress(senderEmail, senderName),
+                    Subject = "Notification",
+                    Body = message,
+                    IsBodyHtml = false
+                };
+
+                mailMessage.To.Add(recipientEmail);
+
+                using (var smtpClient = new SmtpClient(smtpServer, port))
+                {
+                    smtpClient.Credentials = new NetworkCredential(senderEmail, password);
+                    smtpClient.EnableSsl = true;
+                    smtpClient.DeliveryMethod = SmtpDeliveryMethod.Network;
+                    smtpClient.UseDefaultCredentials = false;
+
+                    smtpClient.Send(mailMessage);
+                    Console.WriteLine("Regular user notification sent successfully.");
+                    return true;
                 }
             }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error sending regular user notification: {ex}");
+                return false;
+            }
         }
+
     }
 
     public class RegularUserNotification : INotification
@@ -71,41 +80,50 @@ namespace BlazorApp.Server.Repository
 
         public static RegularUserNotification Instance => _instance.Value;
 
-        public void SendNotification(string message, string recipientEmail)
+        public bool SendNotification(string message, string recipientEmail)
         {
-            var smtpServer = _configuration["EmailSettings:SmtpServer"];
-            var port = int.Parse(_configuration["EmailSettings:Port"]);
-            var senderEmail = _configuration["EmailSettings:SenderEmail"];
-            var senderName = _configuration["EmailSettings:SenderName"];
-            var password = _configuration["EmailSettings:Password"];
-
-            // Простое уведомление для обычных пользователей
-            var mailMessage = new MailMessage
+            try
             {
-                From = new MailAddress(senderEmail, senderName),
-                Subject = "Notification",
-                Body = message,
-                IsBodyHtml = false // Обычный текст
-            };
+                // Извлекаем настройки
+                var smtpServer = _configuration["EmailSettings:SmtpServer"];
+                var senderEmail = _configuration["EmailSettings:SenderEmail"];
+                var senderName = _configuration["EmailSettings:SenderName"];
+                var password = _configuration["EmailSettings:Password"];
 
-            mailMessage.To.Add(recipientEmail);
-
-            using (var smtpClient = new SmtpClient(smtpServer, port)
-            {
-                Credentials = new NetworkCredential(senderEmail, password),
-                EnableSsl = port == 587
-            })
-            {
-                try
+                if (!int.TryParse(_configuration["EmailSettings:Port"], out int port))
                 {
+                    Console.WriteLine("Invalid SMTP port in configuration.");
+                    return false;
+                }
+
+                var mailMessage = new MailMessage
+                {
+                    From = new MailAddress(senderEmail, senderName),
+                    Subject = "Notification",
+                    Body = message,
+                    IsBodyHtml = false
+                };
+
+                mailMessage.To.Add(recipientEmail);
+
+                using (var smtpClient = new SmtpClient(smtpServer, port))
+                {
+                    smtpClient.Credentials = new NetworkCredential(senderEmail, password);
+                    smtpClient.EnableSsl = true;
+                    smtpClient.DeliveryMethod = SmtpDeliveryMethod.Network;
+                    smtpClient.UseDefaultCredentials = false;
+
                     smtpClient.Send(mailMessage);
                     Console.WriteLine("Regular user notification sent successfully.");
-                }
-                catch (Exception ex)
-                {
-                    Console.WriteLine($"Error sending regular user notification: {ex.Message}");
+                    return true;
                 }
             }
-        }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error sending regular user notification: {ex}");
+                return false;
+            }
+        
+    }
     }
 }

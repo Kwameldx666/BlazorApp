@@ -1,0 +1,111 @@
+﻿@page "/pop3-email"
+@inject HttpClient Http
+
+<h3>POP3 Email</h3>
+
+@if (!string.IsNullOrEmpty(StatusMessage))
+{
+    <div class="alert @AlertClass">@StatusMessage</div>
+}
+
+@if (!string.IsNullOrEmpty(EmailContent))
+{
+    <div class="email-content">
+        <h4>Message Details</h4>
+        <p><strong>From:</strong> @EmailFrom</p>
+        <p><strong>Subject:</strong> @EmailSubject</p>
+        <p><strong>Body:</strong></p>
+        <pre>@EmailContent</pre>
+    </div>
+}
+else
+{
+    <p>Loading email...</p>
+}
+
+<button class="btn btn-primary" @onclick="FetchEmails">Fetch Latest POP3 Email</button>
+
+<style>
+    .email-content {
+        background-color: #f9f9f9;
+        padding: 15px;
+        border-radius: 5px;
+        margin-top: 20px;
+    }
+
+    pre {
+        background-color: #f4f4f4;
+        padding: 10px;
+        border-radius: 5px;
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+
+    button {
+        margin-top: 20px;
+    }
+
+    .alert {
+        padding: 15px;
+        margin-top: 20px;
+        border-radius: 5px;
+        font-weight: bold;
+    }
+
+    .alert-success {
+        background-color: #d4edda;
+        color: #155724;
+    }
+
+    .alert-warning {
+        background-color: #fff3cd;
+        color: #856404;
+    }
+
+    .alert-danger {
+        background-color: #f8d7da;
+        color: #721c24;
+    }
+</style>
+
+@code {
+    private string StatusMessage;
+    private string AlertClass;
+    private string EmailContent;
+    private string EmailFrom;
+    private string EmailSubject;
+
+    private async Task FetchEmails()
+    {
+        try
+        {
+            var response = await Http.GetFromJsonAsync<EmailResponse>("/api/email/fetch-pop3");
+            if (response == null || string.IsNullOrEmpty(response.Body))
+            {
+                StatusMessage = "No new messages.";
+                AlertClass = "alert-warning";
+            }
+            else
+            {
+                EmailFrom = response.From;
+                EmailSubject = response.Subject;
+                EmailContent = response.Body;
+
+                StatusMessage = "Message successfully retrieved.";
+                AlertClass = "alert-success";
+            }
+        }
+        catch (Exception ex)
+        {
+            StatusMessage = $"Error: {ex.Message}";
+            AlertClass = "alert-danger";
+        }
+    }
+
+    public class EmailResponse
+    {
+        public string From { get; set; }
+        public string Subject { get; set; }
+        public string Body { get; set; }
+    }
+}
